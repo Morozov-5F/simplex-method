@@ -7,7 +7,7 @@
 
 #define PRINT_FORMAT_ERROR            "\x1B[31m"
 #define PRINT_FORMAT_HIGHLIGHT        "\x1B[35m"
-#define PRINT_FORMAT_HIGHLIGHT_2      "\x1B[33m"
+#define PRINT_FORMAT_HIGHLIGHT_2      "\x1B[32m"
 #define PRINT_CLEAR_FORMAT            "\x1B[0m"
 
 #define FILE_NAME                     "input.txt"
@@ -96,6 +96,28 @@ void dump_matrix_h_elem(gsl_matrix * M, size_t column, size_t row)
    }
 }
 
+void dump_matrix_result(gsl_matrix * M)
+{
+   size_t m = M->size1, n = M->size2;
+
+   for (int i = 0; i < m; ++i)
+   {
+      for (int j = 0; j < n; ++j)
+      {
+         double elem = gsl_matrix_get(M, i, j);
+         if (j == n - 1)
+         {
+            printf(PRINT_FORMAT_HIGHLIGHT_2 "% 03.2f\t" PRINT_CLEAR_FORMAT, elem);
+         }
+         else
+         {
+            printf("% 03.2f\t", elem);
+         }
+      }
+      printf("\n");
+   }
+}
+
 int main(int argc, const char * argv[])
 {
    unsigned m, n;
@@ -124,7 +146,7 @@ int main(int argc, const char * argv[])
    fclose(input_file);
 
    /* Simplex algorithm */
-   z_row = gsl_matrix_row(matrix, m - 1);
+   z_row = gsl_matrix_subrow(matrix, m - 1, 0, m - 1);
    main_matrix = gsl_matrix_submatrix(matrix, 0, 0, m - 1, n);
 
    dump_matrix(matrix);
@@ -144,6 +166,12 @@ int main(int argc, const char * argv[])
          double elem = gsl_vector_get(res_column, i);
          double min_elem = gsl_vector_get(res_column, lead_index_row);
 
+         if (min_elem < 0 && elem > 0)
+         {
+            lead_index_row = i;
+            continue;
+         }
+
          if (elem < min_elem && elem > 0)
          {
             lead_index_row = i;
@@ -151,9 +179,9 @@ int main(int argc, const char * argv[])
       }
 
       lead_elem = gsl_matrix_get(matrix, lead_index_row, lead_index_column);
-      if (lead_elem == 0)
+      if (lead_elem <= 0)
       {
-         fprintf(stderr, PRINT_FORMAT_ERROR "Lead element should not be zero!\n" PRINT_CLEAR_FORMAT);
+         fprintf(stderr, PRINT_FORMAT_ERROR "Lead element should not be less than zero!\n" PRINT_CLEAR_FORMAT);
          goto done;
       }
       lead_row = gsl_matrix_row(matrix, lead_index_row);
@@ -177,9 +205,10 @@ int main(int argc, const char * argv[])
       dump_matrix_h_row(matrix, lead_index_row);
    }
 
-
+   dump_matrix_result(matrix);
 
 done:
+
    gsl_matrix_free(matrix);
    gsl_vector_free(lead_column);
    gsl_vector_free(res_column);
